@@ -1,0 +1,27 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: customer-service
+  cloud:
+    inetutils:
+      # 🔒 Completely ignore the corporate network card domain patterns
+      ignored-interfaces:
+        - eth.*
+        - wlan.*
+        - vnic.*
+      use-only-site-local-interfaces: false
+
+eureka:
+  client:
+    # Force client to use standard loopback connection parameters explicitly
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: "http://127.0.0"
+  instance:
+    # Tell Eureka to explicitly target the local loopback IP block directly
+    prefer-ip-address: true
+    ip-address: 127.0.0.1
+    instance-id: ${spring.application.name}:${server.port}

@@ -1,0 +1,6 @@
+server:
+  port: 8080 #(The only port the frontend hits)
+
+spring:
+  application:
+    name: api-gateway
