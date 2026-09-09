@@ -10,7 +10,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/ecommerce_db
     username: postgres # Your Postgres username (default is postgres)
-    password: admin1234 # ⚠️ Replace with the password you set during installation
+    password: admin1234 #  Replace with the password you set during installation
     driver-class-name: org.postgresql.Driver
 
   # 🛠️ Hibernate / JPA Settings
