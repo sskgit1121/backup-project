@@ -4,3 +4,26 @@ server:
 spring:
   application:
     name: api-gateway
+  cloud:
+    gateway:
+      locator:
+          enabled: true
+          lower-case-service-id: true # Automatically maps uppercase Eureka IDs to lowercase lookups [1]
+      routes:
+        # 1. Route to Order Service
+        - id: order-service-route
+          uri: lb://order-service
+          predicates:
+            - Path=/api/orders/**
+
+        # 2. Route to Product Service
+        - id: product-service-route
+          uri: lb://product-service
+          predicates:
+            - Path=/api/products/**
+
+        # 3. Route to Inventory Service
+        - id: inventory-service-route
+          uri: lb://inventory-service
+          predicates:
+            - Path=/api/inventory/**
