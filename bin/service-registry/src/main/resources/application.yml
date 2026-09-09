@@ -1,5 +1,5 @@
 server:
-  port: 8761
+  port: 8761 #(Eureka) | 8761 (Standard Eureka port)
 
 spring:
   application:

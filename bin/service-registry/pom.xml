@@ -14,7 +14,7 @@
     <artifactId>service-registry</artifactId>
 
     <dependencies>
-        <!-- 🚀 THIS IS THE CORRECT DEPENDENCY FOR THE REGISTRY SERVER -->
+        <!-- 🚀 THIS IS THE CORRECT DEPENDENCY FOR THE REGISTRY SERVER that registers clients-->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>

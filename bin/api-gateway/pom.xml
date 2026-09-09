@@ -14,10 +14,26 @@
     <!-- ⚠️ Ensure this artifactId matches its respective folder name -->
     <artifactId>api-gateway</artifactId>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
+        <dependencies>
+    <!-- 1. The Core Gateway Starter (DO NOT use spring-boot-starter-web here) -->
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-gateway</artifactId>
+    </dependency>
+
+    <!-- 2. Eureka Client Discovery -->
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+    </dependency>
+    <!-- 3. Explicit Load Balancer for routing resolution -->
+        <!-- we first need to fix why your API Gateway (port 8080) is
+			throwing 404 errors. If the gateway doesn't route traffic correctly,
+			a frontend application won't be able to talk to your services.-->
+		<dependency>
+	<groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+		</dependency>
+
     </dependencies>
 </project>

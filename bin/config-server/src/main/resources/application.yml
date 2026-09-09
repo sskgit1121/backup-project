@@ -1,0 +1,6 @@
+server:
+  port: 8888 #(Standard Config port)
+
+spring:
+  application:
+    name: config-server

@@ -31,6 +31,16 @@ public class OrderController {
         
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
+    
+    // 2. ADD THIS NEW METHOD to handle GET requests for /api/orders/{id}
+    @GetMapping("/{id}")
+    public ResponseEntity<String> getOrderById(@PathVariable String id) {
+        // Replace this with your actual database lookup logic from OrderService
+        // Example: Order order = orderService.getOrderById(id);
+        
+        String mockResponse = "Fetched order details for ID: " + id;
+        return ResponseEntity.ok(mockResponse);
+    }
 }
 
 // Simple request payload schema
