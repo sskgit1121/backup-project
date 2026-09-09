@@ -5,6 +5,24 @@ spring:
   application:
     name: order-service
     
+    
+  # 🔌 PostgreSQL Database Connection Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ecommerce_db
+    username: postgres # Your Postgres username (default is postgres)
+    password: admin1234 # ⚠️ Replace with the password you set during installation
+    driver-class-name: org.postgresql.Driver
+
+  # 🛠️ Hibernate / JPA Settings
+  jpa:
+    hibernate:
+      ddl-auto: update # Automatically creates/updates SQL tables based on your Java Entity classes
+    show-sql: true # Prints the SQL queries in your IDE terminal console for debugging
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+# Keep your existing eureka and management configurations below this line...  
   eureka:
     client:
       service-url:

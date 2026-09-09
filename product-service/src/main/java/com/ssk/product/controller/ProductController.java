@@ -4,6 +4,9 @@ package com.ssk.product.controller;
 import com.ssk.product.model.Product;
 import com.ssk.product.repository.ProductRepository;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 
 @RestController
@@ -26,5 +29,11 @@ public class ProductController {
     @ResponseStatus(HttpStatus.CREATED)
     public Product createProduct(@RequestBody Product product) {
         return productRepository.save(product);
+    }
+    
+    @GetMapping
+    @ResponseStatus(HttpStatus.OK)
+    public List<Product> getAllProducts() {
+        return productRepository.findAll();
     }
 }

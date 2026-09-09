@@ -15,18 +15,20 @@ public class InventoryController {
         this.inventoryRepository = inventoryRepository;
     }
 
-    // 1. Existing GET endpoint for checking stock
     @GetMapping("/check")
     public boolean isInStock(@RequestParam String skuCode, @RequestParam int quantity) {
         return inventoryRepository.findBySkuCode(skuCode)
-                .map(inventory -> inventory.quantity() >= quantity)
+                .map(inventory -> inventory.getQuantity() >= quantity) // 🔑 Changed from .quantity()
                 .orElse(false);
     }
 
-    // 2. ADD THIS NEW POST ENDPOINT TO SEED DATA
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Inventory createInventory(@RequestBody Inventory inventory) {
+        // Simple duplication check before inserting
+        if (inventoryRepository.findBySkuCode(inventory.getSkuCode()).isPresent()) {
+            throw new RuntimeException("Inventory with SKU " + inventory.getSkuCode() + " already exists!");
+        }
         return inventoryRepository.save(inventory);
     }
 }

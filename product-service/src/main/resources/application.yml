@@ -4,7 +4,13 @@ server:
 spring:
   application:
     name: product-service
-    
+  
+  # 🔌 MongoDB Connection URI (Creates 'product_db' automatically on first insert)
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/product_db
+
+# Keep your existing eureka server defaults zone configurations here...  
   eureka:
     client:
       service-url:
