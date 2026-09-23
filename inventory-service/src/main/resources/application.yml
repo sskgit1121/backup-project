@@ -1,19 +1,17 @@
+
 server:
   port: 8086
 
 spring:
   application:
     name: inventory-service
-    
-    
-  # 🔌 PostgreSQL Database Connection Configuration
+
   datasource:
-    url: jdbc:postgresql://localhost:5432/inventory_db #keep one db for sql/ another onlyone for nosql
+    url: jdbc:postgresql://localhost:5432/inventory_db
     username: postgres
-    password: admin1234 # ⚠️ Use your PostgreSQL password
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
-  # 🛠️ Hibernate / JPA Settings
   jpa:
     hibernate:
       ddl-auto: update
@@ -21,9 +19,19 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        
-        #keep eureka below this...    
-  eureka:
-    client:
-      service-url:
-        defaultZone: http://localhost:8761/eureka/,http://localhost:8762/eureka/      #mult server instances for this prj  
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          secret-key: ${JWT_SECRET_KEY}
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: TRACE
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+

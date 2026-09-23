@@ -21,7 +21,39 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-
+#
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Tells Spring Boot to parse the HMAC signature using our symmetric key matrix
+          secret-key_value: "SagarWorkspaceSskSecretKeyForPolyglotSaasErp"
+        
+  # 🛡️ Resilience4j Configuration in order-service application.yml      
+resilience4j:
+  circuitbreaker:
+    instances:
+      inventoryServiceBreaker:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 5          # Evaluates the last 5 requests
+        failureRateThreshold: 50      # Trips if 50% or more requests fail
+        minimumNumberOfCalls: 2       # Start evaluating after just 2 calls
+        waitDurationInOpenState: 10s  # Stays OPEN for 10 seconds before trying again (HALF-OPEN)
+        permittedNumberOfCallsInHalfOpenState: 2
+        recordExceptions:
+          - org.springframework.web.client.RestClientException
+          - feign.FeignException
+          - java.lang.RuntimeException
+  retry:
+    instances:
+      orderRetry:
+        maxAttempts: 3                # Total attempts (1 initial call + 2 retries)
+        waitDuration: 2s              # Wait 2 seconds between each retry attempt
+        retryExceptions:
+          - feign.FeignException       # Only retry if a network/Feign error occurs
+          - java.io.IOException          
+ 
+  
 # Keep your existing eureka and management configurations below this line...  
   eureka:
     client:

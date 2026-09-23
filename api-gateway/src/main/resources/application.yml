@@ -15,6 +15,13 @@ spring:
           uri: lb://order-service
           predicates:
             - Path=/api/orders/**
+          #  MOVED AND ALIGNED DIRECTLY UNDER THE ROUTE PREDICATE rate limiter
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 2    # Lower to 2 requests per second
+                redis-rate-limiter.burstCapacity: 2    # Lower burst space to 2 tokens
+                key-resolver: "#{@userKeyResolver}"
 
         # 2. Route to Product Service
         - id: product-service-route
@@ -38,7 +45,19 @@ spring:
         - id: payment-service-route
           uri: lb://payment-service
           predicates:
-            - Path=/api/payments/**     
+            - Path=/api/payments/**    
+       #6. 
+ # 🔐 Add this block to Route to Payment Service authentication traffic
+        - id: auth-service-route
+          uri: lb://AUTH-SERVICE
+          predicates:
+            - Path=/api/v1/auth/**            
+  #7.
+   # 📊 Add this block to route inventory traffic
+        - id: inventory-service-route
+          uri: lb://INVENTORY-SERVICE
+          predicates:
+            - Path=/api/v1/erp/inventory/**
             
   eureka:
     client:

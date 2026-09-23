@@ -1,0 +1,46 @@
+server:
+  port: 8080 #(The only port the frontend hits)
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      locator:
+          enabled: true
+          lower-case-service-id: true # Automatically maps uppercase Eureka IDs to lowercase lookups [1]
+      routes:
+        # 1. Route to Order Service (when needs/if necessary)
+        - id: order-service-route
+          uri: lb://order-service
+          predicates:
+            - Path=/api/orders/**
+
+        # 2. Route to Product Service
+        - id: product-service-route
+          uri: lb://product-service
+          predicates:
+            - Path=/api/products/**
+
+        # 3. Route to Inventory Service
+        - id: inventory-service-route
+          uri: lb://inventory-service
+          predicates:
+            - Path=/api/inventory/**
+            
+        # 4. Route to Customer Service (Example of adding more services!)
+        - id: customer-service-route
+          uri: lb://customer-service
+          predicates:
+            - Path=/api/customers/**
+
+        # 5. Route to Payment Service (Example of adding more services!)
+        - id: payment-service-route
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/payments/**     
+            
+  eureka:
+    client:
+      service-url:
+        defaultZone: http://localhost:8761/eureka/,http://localhost:8762/eureka/      #mult server instances for this prj

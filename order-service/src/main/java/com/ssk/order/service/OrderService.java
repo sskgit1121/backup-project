@@ -4,6 +4,10 @@ import com.ssk.order.client.InventoryClient;
 import com.ssk.order.client.ProductClient;
 import com.ssk.order.model.Order;
 import com.ssk.order.repository.OrderRepository;
+
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -20,7 +24,10 @@ public class OrderService {
         this.inventoryClient = inventoryClient;
         this.productClient = productClient;
     }
-
+ // 1. Add the Circuit Breaker annotation. Define a unique name and the fallback method name.
+    //Add api-gatway in api-config & @Retry on order
+    @CircuitBreaker(name = "inventoryServiceBreaker", fallbackMethod = "inventoryFallback")
+    @Retry(name = "orderRetry")
     public String placeOrder(String productId, String skuCode, int quantity) {
         
         // 1.  Call NoSQL product-service via OpenFeign to fetch real price details from MongoDB
@@ -51,5 +58,12 @@ public class OrderService {
         
         return "Success! Order securely placed. Tracking ID: " + order.getOrderNumber() 
                 + " | Total Charged: ₹" + totalCalculatedPrice;
+    }
+    
+ // 2. 🛡️ WRITE THE FALLBACK METHOD
+    // ⚠️ IMPORTANT: It MUST have the exact same method arguments as placeOrder(), plus a Throwable parameter at the end!
+    public String inventoryFallback(String productId, String skuCode, int quantity, Throwable throwable) {
+        return "Order Processing Delayed: The Inventory Verification System is temporarily offline. "
+             + "Our engineers are fixing it. Please retry your order shortly! (Reason: " + throwable.getMessage() + ")";
     }
 }
