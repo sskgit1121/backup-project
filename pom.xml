@@ -47,3 +47,4 @@
         </dependencies>
     </dependencyManagement>
 </project>
+<!--Parent properties inheritated by its x-Modules-->
