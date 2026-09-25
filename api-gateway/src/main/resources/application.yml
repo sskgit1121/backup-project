@@ -9,6 +9,11 @@ spring:
       locator:
           enabled: true
           lower-case-service-id: true # Automatically maps uppercase Eureka IDs to lowercase lookups [1]
+      filter:
+        request-rate-limiter:
+          # ✅ CRUCIAL TEST setting: If the key resolver ever returns empty or fails, block the request!
+          deny-empty-key: true  
+      
       routes:
         # 1. Route to Order Service (when needs/if necessary)
         - id: order-service-route
@@ -19,8 +24,8 @@ spring:
           filters:
             - name: RequestRateLimiter
               args:
-                redis-rate-limiter.replenishRate: 2    # Lower to 2 requests per second
-                redis-rate-limiter.burstCapacity: 2    # Lower burst space to 2 tokens
+                redis-rate-limiter.replenishRate: 1    # Lower to 2 requests per second
+                redis-rate-limiter.burstCapacity: 1    # Lower burst space to 2 tokens
                 key-resolver: "#{@userKeyResolver}"
 
         # 2. Route to Product Service
@@ -33,7 +38,13 @@ spring:
         - id: inventory-service-route
           uri: lb://inventory-service
           predicates:
-            - Path=/api/inventory/**
+            - Path=/api/v1/erp/inventory/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 1    # Allowed 2 requests per second
+                redis-rate-limiter.burstCapacity: 1    # Maximum token bucket space
+                key-resolver: "#{@userKeyResolver}"   
             
         # 4. Route to Customer Service (Example of adding more services!)
         - id: customer-service-route
@@ -46,19 +57,21 @@ spring:
           uri: lb://payment-service
           predicates:
             - Path=/api/payments/**    
-       #6. 
- # 🔐 Add this block to Route to Payment Service authentication traffic
+      
+ # 6. Add this block to Route to Payment Service authentication traffic
         - id: auth-service-route
           uri: lb://AUTH-SERVICE
           predicates:
-            - Path=/api/v1/auth/**            
-  #7.
-   # 📊 Add this block to route inventory traffic
-        - id: inventory-service-route
-          uri: lb://INVENTORY-SERVICE
-          predicates:
-            - Path=/api/v1/erp/inventory/**
+            - Path=/api/v1/auth/**  
             
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      # Timeout settings to prevent silent hanging
+      timeout: 2000ms 
+ 
+  
   eureka:
     client:
       service-url:

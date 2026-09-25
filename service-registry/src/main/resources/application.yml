@@ -31,8 +31,8 @@ eureka:
     prefer-ip-address: false
   client:
   # Peer 1 registers itself with Peer 2
-    register-with-eureka: true
-    fetch-registry: true
+    register-with-eureka: false
+    fetch-registry: false
     serviceUrl:
       defaultZone: http://localhost:8762/eureka/
 
@@ -50,7 +50,7 @@ eureka:
     prefer-ip-address: false
     # Peer 2 registers itself with Peer 1
   client:
-    register-with-eureka: true
-    fetch-registry: true
+    register-with-eureka: false
+    fetch-registry: false
     serviceUrl:
       defaultZone: http://localhost:8761/eureka/    

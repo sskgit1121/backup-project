@@ -24,6 +24,10 @@ spring:
     oauth2:
       resourceserver:
         jwt:
+          # Point issuer directly to auth-service base url
+          issuer-uri: http://localhost:8081
+          # Point directly to your newly created local public certs endpoint
+          jwk-set-uri: http://localhost:8081/api/v1/auth/certs
           secret-key: ${JWT_SECRET_KEY}
 logging:
   level:

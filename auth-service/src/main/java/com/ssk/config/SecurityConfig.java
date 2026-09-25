@@ -19,9 +19,10 @@ import com.ssk.security.TenantIdentifierFilter;
 @Configuration
 public class SecurityConfig {
 
+	//symetric key
     @Value("${spring.security.oauth2.resourceserver.jwt.secret-key}")
     private String secretKey;
-
+    
     /**
      * Chain 1: Public endpoints.
      * Captures only specific paths and allows them through completely unauthenticated.
@@ -32,7 +33,7 @@ public class SecurityConfig {
         http
             // Scope this filter chain strictly to public URL patterns
             .securityMatchers(matchers -> matchers
-                .requestMatchers("/api/v1/auth/login/**", "/api/v1/erp/inventory/test-header", "/error")
+                .requestMatchers("/api/v1/auth/login/**","/api/v1/auth/certs", "/error")
             )
             // Disable CSRF for public endpoints
             .csrf(csrf -> csrf.disable()) 
@@ -45,8 +46,9 @@ public class SecurityConfig {
     }
 
     /**
-     * Chain 2: Protected endpoints (Default Fallback).
+     * Chain 2: Protected endpoints Symmetric Legacy Fallback (Default Fallback).
      * Secures all other API routes using stateless JWT Bearer token authentication.
+     * Secures all other back-channel/internal service requests via the shared secret key.
      */
     @Bean
     @Order(2)
@@ -74,6 +76,10 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * Local Symmetric Decoder instantiation logic:internal.
+     * Removed the global @Bean marker so it doesn't conflict with Chain 2.
+     */
     @Bean
     public JwtDecoder jwtDecoder() {
         SecretKeySpec secretKeySpec = new SecretKeySpec(

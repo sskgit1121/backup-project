@@ -2,7 +2,10 @@ package com.ssk.auth;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+
+import com.ssk.security.LocalKeyManager;
 
 @SpringBootApplication
 @ComponentScan(basePackages = {"com.ssk.auth", "com.ssk.config"}) 
@@ -12,5 +15,10 @@ public class AuthServiceApplication {
         System.out.println("    SSK IDENTITY & AUTH ENGINE (PORT 8081) STARTING... ");
         System.out.println("=====================================================");
         SpringApplication.run(AuthServiceApplication.class, args);
+    }
+    
+    @Bean
+    public LocalKeyManager localKeyManager() {
+        return new LocalKeyManager();
     }
 }

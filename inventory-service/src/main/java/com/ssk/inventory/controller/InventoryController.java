@@ -1,11 +1,13 @@
 
 package com.ssk.inventory.controller;
 
+import com.ssk.context.TenantContext;
 import com.ssk.inventory.model.Inventory;
 import com.ssk.inventory.repository.InventoryRepository;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -61,6 +63,7 @@ public class InventoryController {
         }
 
     @PostMapping("/deduct/{sku}/{quantity}")
+    @Transactional 
     public ResponseEntity<?> deductInventory(
         @PathVariable("sku") String sku, 
         @PathVariable("quantity") Integer quantity
@@ -71,9 +74,13 @@ public class InventoryController {
                     "Deduction quantity must be greater than zero"
             );
         }
+        String activeTenant = TenantContext.getTenantId();
 
+        if (activeTenant == null || activeTenant.isBlank()) {
+            throw new SecurityException("Access Denied: Request execution context is missing a valid Tenant ID.");
+        }
         Inventory inventory = inventoryRepository
-                .findBySkuCode(sku)
+                .findBySkuCodeAndTenantId(sku, activeTenant)
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "SKU " + sku
