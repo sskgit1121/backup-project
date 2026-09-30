@@ -27,7 +27,7 @@ spring:
       resourceserver:
         jwt:
           # Tells Spring Boot to parse the HMAC signature using our symmetric key matrix
-          secret-key_value: "SagarWorkspaceSskSecretKeyForPolyglotSaasErp"
+          secret-key_value: "SagarWorkspaceSskSecretKeyForPolyglotSaasErpWorkspaceSskSecretKeyForSskSecretKeyForPolyglotSaasErpWorkspace_1@"
         
   # 🛡️ Resilience4j Configuration in order-service application.yml      
 resilience4j:

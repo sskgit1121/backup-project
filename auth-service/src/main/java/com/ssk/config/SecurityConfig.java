@@ -1,8 +1,12 @@
 package com.ssk.config;
 
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+
 import javax.crypto.spec.SecretKeySpec;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,9 +15,13 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
+import com.nimbusds.jose.JOSEException;
+import com.ssk.security.LocalKeyManager;
 import com.ssk.security.TenantIdentifierFilter;
 
 @Configuration
@@ -23,6 +31,8 @@ public class SecurityConfig {
     @Value("${spring.security.oauth2.resourceserver.jwt.secret-key}")
     private String secretKey;
     
+    @Autowired
+    private LocalKeyManager keyManager; 
     /**
      * Chain 1: Public endpoints.
      * Captures only specific paths and allows them through completely unauthenticated.
@@ -64,7 +74,7 @@ public class SecurityConfig {
 
             // Configure application as an OAuth2 Resource Server validating JWTs
             .oauth2ResourceServer(oauth2 ->
-                oauth2.jwt(jwt -> {})
+                oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
             )
 
             // Extract the multi-tenant context right after token validation succeeds
@@ -75,21 +85,42 @@ public class SecurityConfig {
 
         return http.build();
     }
+ //for permissions
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+        grantedAuthoritiesConverter.setAuthoritiesClaimName("permissions"); 
+        grantedAuthoritiesConverter.setAuthorityPrefix(""); 
 
+        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+        return jwtAuthenticationConverter;
+    }
     /**
      * Local Symmetric Decoder instantiation logic:internal.
      * Removed the global @Bean marker so it doesn't conflict with Chain 2.
+     * @throws JOSEException 
      */
     @Bean
-    public JwtDecoder jwtDecoder() {
+    public JwtDecoder jwtDecoder() throws JOSEException {
+    	 NimbusJwtDecoder asymmetricDecoder = NimbusJwtDecoder
+                 .withPublicKey(keyManager.getRsaKey().toRSAPublicKey())
+                 .build();
+    	//--symetric
         SecretKeySpec secretKeySpec = new SecretKeySpec(
             secretKey.getBytes(StandardCharsets.UTF_8),
             "HmacSHA256"
         );
+        NimbusJwtDecoder symmetricDecoder = NimbusJwtDecoder
+                .withSecretKey(secretKeySpec)
+                .macAlgorithm(MacAlgorithm.HS256)
+                .build();
+//--symetric
+        
+        Map<String, JwtDecoder> decoders = new HashMap<>();
+        decoders.put("RS256", asymmetricDecoder);
+        decoders.put("HS256", symmetricDecoder);
 
-        return NimbusJwtDecoder
-            .withSecretKey(secretKeySpec)
-            .macAlgorithm(MacAlgorithm.HS256)
-            .build();
+        return new DelegatingJwtDecoder(decoders::get);
     }
 }

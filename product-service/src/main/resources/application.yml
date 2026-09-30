@@ -15,7 +15,7 @@ spring:
       resourceserver:
         jwt:
           # Fixed property name for Spring Boot validation signatures
-          secret-key: "SagarWorkspaceSskSecretKeyForPolyglotSaasErp"
+          secret-key: "SagarWorkspaceSskSecretKeyForPolyglotSaasErpSagarWorkspaceSskSecretKeyForPolyglotSaasErp1_@"
 
 # 📡 Fixed indentation alignment for Eureka Client connection routing
 eureka:
