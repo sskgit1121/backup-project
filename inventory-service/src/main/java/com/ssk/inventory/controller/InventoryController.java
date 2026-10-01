@@ -4,6 +4,7 @@ package com.ssk.inventory.controller;
 import com.ssk.context.TenantContext;
 import com.ssk.inventory.model.Inventory;
 import com.ssk.inventory.repository.InventoryRepository;
+import com.ssk.inventory.service.InventoryService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,11 +20,13 @@ import java.util.Map;
 @RequestMapping("/api/v1/erp/inventory")
 public class InventoryController {
 
-	private final InventoryRepository inventoryRepository;
+	 private final InventoryRepository inventoryRepository;
+	    private final InventoryService inventoryService;
 
-	public InventoryController(InventoryRepository inventoryRepository) {
-		this.inventoryRepository = inventoryRepository;
-	}
+	    public InventoryController(InventoryRepository inventoryRepository, InventoryService inventoryService) {
+	        this.inventoryRepository = inventoryRepository;
+	        this.inventoryService = inventoryService;
+	    }
 
 	@GetMapping("/check")
 	@PreAuthorize("hasAuthority('inventory:read')")
@@ -52,38 +55,22 @@ public class InventoryController {
 	}
 
 	@PostMapping("/deduct/{sku}/{quantity}")
-	@Transactional
-	public ResponseEntity<?> deductInventory(@PathVariable("sku") String sku,
-			@PathVariable("quantity") Integer quantity) {
+    public ResponseEntity<?> deductInventory(@PathVariable("sku") String sku,
+                                             @PathVariable("quantity") Integer quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Deduction quantity must be greater than zero");
+        }
 
-		if (quantity <= 0) {
-			throw new IllegalArgumentException("Deduction quantity must be greater than zero");
-		}
-		String activeTenant = TenantContext.getTenantId();
+        Inventory updatedInventory = inventoryService.deductStock(sku, quantity);
 
-		if (activeTenant == null || activeTenant.isBlank()) {
-			throw new SecurityException("Access Denied: Request execution context is missing a valid Tenant ID.");
-		}
-		Inventory inventory = inventoryRepository.findBySkuCodeAndTenantId(sku, activeTenant)
-				.orElseThrow(() -> new RuntimeException("SKU " + sku + " not found or access denied"));
+        Map<String, Object> response = new HashMap<>();
+        response.put("sku", sku);
+        response.put("deductedQty", quantity);
+        response.put("remainingStock", updatedInventory.getQuantity());
+        response.put("status", "SUCCESS");
 
-		if (inventory.getQuantity() < quantity) {
-			throw new RuntimeException("Insufficient stock level for SKU: " + sku);
-		}
-
-		inventory.setQuantity(inventory.getQuantity() - quantity);
-
-		inventoryRepository.save(inventory);
-
-		Map<String, Object> response = new HashMap<>();
-
-		response.put("sku", sku);
-		response.put("deductedQty", quantity);
-		response.put("remainingStock", inventory.getQuantity());
-		response.put("status", "SUCCESS");
-
-		return ResponseEntity.ok(response);
-	}
+        return ResponseEntity.ok(response);
+    }
 
 	@PostMapping("/test-header")
 	public ResponseEntity<String> testHeader(
@@ -92,32 +79,16 @@ public class InventoryController {
 	}
 
 	@GetMapping
-	@PreAuthorize("hasAuthority('inventory:read')")
-	public List<Inventory> fetchAllStock() {
-		return inventoryRepository.findAll();
-	}
+    @PreAuthorize("hasAuthority('inventory:read')")
+    public List<Inventory> fetchAllStock() {
+        // Clean and simple! The TenantSecurityAspect applies filters to this automatically
+        return inventoryRepository.findAll();
+    }
 
-	 @PostMapping("/adjust")
+	    @PostMapping("/adjust")
 	    @PreAuthorize("hasAuthority('inventory:write')")
 	    public ResponseEntity<Inventory> modifyStock(@RequestBody Inventory adjustmentPayload) {
-	        String activeTenant = getValidatedTenant();
-	        
-	        // Ensure they aren't accidentally or maliciously trying to update another tenant's item
-	        Inventory existing = inventoryRepository.findBySkuCodeAndTenantId(adjustmentPayload.getSkuCode(), activeTenant)
-	                .orElseThrow(() -> new RuntimeException("SKU not found or access denied"));
-	        
-	        existing.setQuantity(adjustmentPayload.getQuantity());
-	        // Map other fields to update if needed
-	        
-	        return ResponseEntity.ok(inventoryRepository.save(existing));
+	        Inventory updatedInventory = inventoryService.adjustStock(adjustmentPayload);
+	        return ResponseEntity.ok(updatedInventory);
 	    }
-	 
-	// Private helper to remove duplicate tenant assertion checks
-	    private String getValidatedTenant() {
-	        String activeTenant = TenantContext.getTenantId();
-	        if (activeTenant == null || activeTenant.isBlank()) {
-	            throw new SecurityException("Access Denied: Request execution context is missing a valid Tenant ID.");
-	        }
-	        return activeTenant;
-	    }
-}
+	}

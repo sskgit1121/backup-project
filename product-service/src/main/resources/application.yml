@@ -9,7 +9,11 @@ spring:
   data:
     mongodb:
       uri: mongodb://localhost:27017/product_db
-      
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+          
   security:
     oauth2:
       resourceserver:

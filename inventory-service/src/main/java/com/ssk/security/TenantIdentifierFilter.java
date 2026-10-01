@@ -1,5 +1,5 @@
 package com.ssk.security;
-
+// It intercepts the web request after Spring Security has already validated the OAuth2 Bearer Token
 import com.ssk.context.TenantContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

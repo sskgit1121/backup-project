@@ -1,6 +1,6 @@
 
 package com.ssk.config;
-
+//This is an AspectJ class that acts as a runtime proxy over your data layer
 import com.ssk.context.TenantContext;
 
 import jakarta.persistence.EntityManager;

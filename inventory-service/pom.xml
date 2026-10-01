@@ -51,13 +51,13 @@
         <!-- PostgreSQL -->
         <dependency>
             <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		
         <!-- Eureka Client -->
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
 
