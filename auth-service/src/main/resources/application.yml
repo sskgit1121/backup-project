@@ -1,6 +1,6 @@
-
 server:
-  port: 8081
+  port: ${PORT:${SERVER_PORT:8081}}
+  shutdown: graceful
 
 spring:
   application:
@@ -10,29 +10,34 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8081
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8081}
           secret-key: ${JWT_SECRET_KEY:SagarWorkspaceSskSecretKeyForPolyglotSaasErpProductionEnterpriseSystemKeyLengthMustBeLongEnough}
   datasource:
-    url: jdbc:postgresql://localhost:5432/auth_db
-    username: postgres
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/auth_db}
+    username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:admin1234}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 logging:
   level:
-    org.springframework.security: DEBUG
-    org.springframework.security.oauth2: TRACE
+    org.springframework.security: ${LOG_SECURITY_LEVEL:DEBUG}
+    org.springframework.security.oauth2: ${LOG_OAUTH2_LEVEL:TRACE}
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

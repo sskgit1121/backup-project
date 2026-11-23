@@ -1,5 +1,6 @@
 server:
-  port: 8080 #(The only port the frontend hits)
+  port: ${PORT:${SERVER_PORT:8080}}
+  shutdown: graceful
 
 spring:
   application:
@@ -7,25 +8,23 @@ spring:
   cloud:
     gateway:
       locator:
-          enabled: true
-          lower-case-service-id: true # Automatically maps uppercase Eureka IDs to lowercase lookups [1]
+        enabled: true
+        lower-case-service-id: true
       filter:
         request-rate-limiter:
-          # ✅ CRUCIAL TEST setting: If the key resolver ever returns empty or fails, block the request!
-          deny-empty-key: true  
+          deny-empty-key: true
       
       routes:
-        # 1. Route to Order Service (when needs/if necessary)
+        # 1. Route to Order Service
         - id: order-service-route
           uri: lb://order-service
           predicates:
             - Path=/api/orders/**
-          #  MOVED AND ALIGNED DIRECTLY UNDER THE ROUTE PREDICATE rate limiter
           filters:
             - name: RequestRateLimiter
               args:
-                redis-rate-limiter.replenishRate: 1    # Lower to 2 requests per second
-                redis-rate-limiter.burstCapacity: 1    # Lower burst space to 2 tokens
+                redis-rate-limiter.replenishRate: 1
+                redis-rate-limiter.burstCapacity: 1
                 key-resolver: "#{@userKeyResolver}"
 
         # 2. Route to Product Service
@@ -42,37 +41,42 @@ spring:
           filters:
             - name: RequestRateLimiter
               args:
-                redis-rate-limiter.replenishRate: 1    # Allowed 2 requests per second
-                redis-rate-limiter.burstCapacity: 1    # Maximum token bucket space
-                key-resolver: "#{@userKeyResolver}"   
-            
-        # 4. Route to Customer Service (Example of adding more services!)
+                redis-rate-limiter.replenishRate: 1
+                redis-rate-limiter.burstCapacity: 1
+                key-resolver: "#{@userKeyResolver}"
+
+        # 4. Route to Customer Service
         - id: customer-service-route
           uri: lb://customer-service
           predicates:
             - Path=/api/customers/**
 
-        # 5. Route to Payment Service (Example of adding more services!)
+        # 5. Route to Payment Service
         - id: payment-service-route
           uri: lb://payment-service
           predicates:
-            - Path=/api/payments/**    
-      
- # 6. Add this block to Route to Payment Service authentication traffic
+            - Path=/api/payments/**
+
+        # 6. Route to Auth Service
         - id: auth-service-route
-          uri: lb://AUTH-SERVICE
+          uri: lb://auth-service
           predicates:
-            - Path=/api/v1/auth/**  
-            
+            - Path=/api/v1/auth/**
+
   data:
     redis:
-      host: localhost
-      port: 6379
-      # Timeout settings to prevent silent hanging
-      timeout: 2000ms 
- 
-  
-  eureka:
-    client:
-      service-url:
-        defaultZone: http://localhost:8761/eureka/,http://localhost:8762/eureka/      #mult server instances for this prj
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/,http://localhost:8762/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

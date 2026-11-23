@@ -1,11 +1,18 @@
 server:
-  port: 8085
+  port: ${PORT:${SERVER_PORT:8085}}
+  shutdown: graceful
 
 spring:
   application:
     name: payment-service
-    
-  eureka:
-    client:
-      service-url:
-        defaultZone: http://localhost:8761/eureka/,http://localhost:8762/eureka/      #mult server instances for this prj  
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/,http://localhost:8762/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

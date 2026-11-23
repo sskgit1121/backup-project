@@ -33,8 +33,15 @@
     <properties>
         <java.version>17</java.version>
         <spring-cloud.version>2023.0.3</spring-cloud.version>
-        <!-- ADD THIS PROPERTY TO MANAGE KAFKA GLOBALLY -->
     </properties>
+
+    <dependencies>
+        <!-- 12-Factor App Factor IX (Disposability): Actuator for health checks, metrics, and readiness/liveness probes -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+    </dependencies>
 
     <dependencyManagement>
         <dependencies>
@@ -48,4 +55,3 @@
         </dependencies>
     </dependencyManagement>
 </project>
-<!--Parent properties inheritated by its x-Modules-->
