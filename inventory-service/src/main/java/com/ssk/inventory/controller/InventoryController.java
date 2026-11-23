@@ -28,26 +28,17 @@ public class InventoryController {
 	        this.inventoryService = inventoryService;
 	    }
 
-	@GetMapping("/check")
-	@PreAuthorize("hasAuthority('inventory:read')")
-	public boolean isInStock(@RequestParam String skuCode, @RequestParam int quantity) {
-
-		if (quantity < 0) {
-			throw new IllegalArgumentException("Quantity cannot be negative");
-		}
-
-		return inventoryRepository.findBySkuCode(skuCode).map(inventory -> inventory.getQuantity() >= quantity)
-				.orElse(false);
-	}
-
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
 	@PreAuthorize("hasAuthority('inventory:write')")
 	public ResponseEntity<Inventory> createInventory(@RequestBody Inventory inventory) {
 
-		if (inventoryRepository.findBySkuCode(inventory.getSkuCode()).isPresent()) {
+		String tenantId = TenantContext.requireTenantId();
 
-			throw new IllegalArgumentException("Inventory with SKU " + inventory.getSkuCode() + " already exists");
+		if (inventoryRepository.existsBySkuCodeAndTenantId(
+		        inventory.getSkuCode(), tenantId)) {
+		    throw new IllegalArgumentException(
+		            "Inventory SKU already exists for this tenant");
 		}
 
 		Inventory savedInventory = inventoryRepository.save(inventory);
@@ -55,35 +46,63 @@ public class InventoryController {
 	}
 
 	@PostMapping("/deduct/{sku}/{quantity}")
-    public ResponseEntity<?> deductInventory(@PathVariable("sku") String sku,
-                                             @PathVariable("quantity") Integer quantity) {
-        if (quantity <= 0) {
-            throw new IllegalArgumentException("Deduction quantity must be greater than zero");
-        }
+	@PreAuthorize("hasAuthority('inventory:write')")
+	public ResponseEntity<?> deductInventory(
+	        @PathVariable("sku") String sku,
+	        @PathVariable("quantity") Integer quantity) {
 
-        Inventory updatedInventory = inventoryService.deductStock(sku, quantity);
+	    if (quantity == null || quantity <= 0) {
+	        throw new IllegalArgumentException(
+	                "Deduction quantity must be greater than zero");
+	    }
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("sku", sku);
-        response.put("deductedQty", quantity);
-        response.put("remainingStock", updatedInventory.getQuantity());
-        response.put("status", "SUCCESS");
+	    Inventory updated = inventoryService.deductStock(
+	            sku, quantity);
 
-        return ResponseEntity.ok(response);
-    }
+	    Map<String, Object> response = new HashMap<>();
+	    response.put("sku", sku);
+	    response.put("deductedQty", quantity);
+	    response.put("remainingStock", updated.getQuantity());
+	    response.put("status", "SUCCESS");
+
+	    return ResponseEntity.ok(response);
+	}
 
 	@PostMapping("/test-header")
 	public ResponseEntity<String> testHeader(
-			@RequestHeader(value = "Authorization", required = false) String authHeader) {
-		return ResponseEntity.ok("Received Authorization Header: " + authHeader);
+	        @RequestHeader(
+	                value = "Authorization",
+	                required = false) String authHeader) {
+	    return ResponseEntity.ok(
+	            "Received Authorization Header: " + authHeader);
 	}
 
-	@GetMapping
-    @PreAuthorize("hasAuthority('inventory:read')")
-    public List<Inventory> fetchAllStock() {
-        // Clean and simple! The TenantSecurityAspect applies filters to this automatically
-        return inventoryRepository.findAll();
+
+@GetMapping("/check")
+@PreAuthorize("hasAuthority('inventory:read')")
+public boolean isInStock(
+        @RequestParam String skuCode,
+        @RequestParam int quantity) {
+
+    if (quantity < 0) {
+        throw new IllegalArgumentException(
+                "Quantity cannot be negative");
     }
+
+    String tenantId = TenantContext.requireTenantId();
+
+    return inventoryRepository
+            .findBySkuCodeAndTenantId(skuCode, tenantId)
+            .map(item -> item.getQuantity() >= quantity)
+            .orElse(false);
+}
+
+@GetMapping
+@PreAuthorize("hasAuthority('inventory:read')")
+public List<Inventory> fetchAllStock() {
+    return inventoryRepository.findAllByTenantId(
+            TenantContext.requireTenantId());
+}
 
 	    @PostMapping("/adjust")
 	    @PreAuthorize("hasAuthority('inventory:write')")

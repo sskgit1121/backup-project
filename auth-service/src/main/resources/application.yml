@@ -10,6 +10,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
+          issuer-uri: http://localhost:8081
           secret-key: ${JWT_SECRET_KEY:SagarWorkspaceSskSecretKeyForPolyglotSaasErpProductionEnterpriseSystemKeyLengthMustBeLongEnough}
   datasource:
     url: jdbc:postgresql://localhost:5432/auth_db

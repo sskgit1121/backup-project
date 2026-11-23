@@ -1,12 +1,12 @@
 package com.ssk.config;
 
+import java.util.function.Function;
+
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
-import com.nimbusds.jose.util.JSONArrayUtils;
+
 import com.nimbusds.jwt.JWTParser;
-import java.util.Map;
-import java.util.function.Function;
 
 public class DelegatingJwtDecoder implements JwtDecoder {
 

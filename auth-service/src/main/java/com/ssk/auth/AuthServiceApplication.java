@@ -15,6 +15,8 @@ public class AuthServiceApplication {
         System.out.println("    SSK IDENTITY & AUTH ENGINE (PORT 8081) STARTING... ");
         System.out.println("=====================================================");
         SpringApplication.run(AuthServiceApplication.class, args);
+        
+        
     }
     
     @Bean

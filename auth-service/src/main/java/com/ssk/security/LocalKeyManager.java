@@ -35,7 +35,7 @@ public class LocalKeyManager {
         return this.rsaKey;
     }
 
-    public JWKSet getJwkSet() {
-        return new JWKSet(this.rsaKey);
+    public JWKSet getPublicJwkSet() {
+        return new JWKSet(rsaKey.toPublicJWK());
     }
 }

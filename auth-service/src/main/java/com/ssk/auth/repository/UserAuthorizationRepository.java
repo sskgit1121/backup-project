@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import com.ssk.auth.model.UserEntity;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface UserAuthorizationRepository extends JpaRepository<UserEntity, Long> {
@@ -36,4 +37,7 @@ public interface UserAuthorizationRepository extends JpaRepository<UserEntity, L
             @Param("username") String username, 
             @Param("tenantId") String tenantId
     );
+    
+    Optional<UserEntity> findByEmailIgnoreCaseAndTenantIdIgnoreCase(
+            String email, String tenantId);
 }

@@ -1,13 +1,14 @@
 package com.ssk.auth.controller;
 
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
+import com.ssk.auth.model.UserEntity;
 import com.ssk.auth.repository.UserAuthorizationRepository;
 import com.ssk.security.LocalKeyManager;
 
@@ -34,6 +36,12 @@ public class MockAuthController {
 	@Autowired
 	private UserAuthorizationRepository authorizationRepository; // ➕ INJECT REPOSITORY
 	
+	@Autowired
+	PasswordEncoder passwordEncoder;
+	
+	@Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
+	private String issuer;
+	
 	//private  RoleRepository roleRepository;
 	// Injecting the exact property used by your SecurityConfig
     @Value("${spring.security.oauth2.resourceserver.jwt.secret-key}")
@@ -41,12 +49,20 @@ public class MockAuthController {
 
     @PostMapping("/login/mock")
     public Map<String, String> generateMockJwtToken(
-            @RequestParam String username,
-            @RequestParam String tenantId) {
+    		@RequestParam String username,
+            @RequestParam String tenantId,
+            @RequestParam String password) {
 
-    	// ➕ Fetch permissions dynamically from your tables
-        List<String> permissionList = authorizationRepository.findPermissionsByUsernameAndTenant(username, tenantId);
-        List<String> roleList = authorizationRepository.findRolesByUsernameAndTenant(username, tenantId); 
+        verifyCredentials(username, tenantId, password);
+
+        List<String> permissionList =
+                authorizationRepository
+                        .findPermissionsByUsernameAndTenant(
+                                username, tenantId);
+
+        List<String> roleList =
+                authorizationRepository.findRolesByUsernameAndTenant(
+                        username, tenantId);
 
         String token = createMockSignedJwt(username, tenantId, permissionList, roleList);
 
@@ -66,7 +82,7 @@ public class MockAuthController {
     	try {
             // 1. Build claims structure exactly how Spring Security expects it
             JwtClaimsSet claimsSet = JwtClaimsSet.builder()
-                    .issuer("mock-auth-server")
+                    .issuer(issuer)
                     .subject(username)
                     .claim("tenant_id", tenantId)
                     .claim("roles", roleList)               // Sets "roles" from database query
@@ -100,25 +116,33 @@ public class MockAuthController {
      */
     //Asymetric JWT Token Jeneration and Expose Public key
     
-    // 1. Endpoint to publish the Public Keys (Acts like Keycloak's certs endpoint)
+    // 1. Endpoint to publish the Public Keys (Acts like Keycloak's certificates endpoint)
     @GetMapping("/certs")
     public Map<String, Object> getPublicCerts() {
-        return keyManager.getJwkSet().toJSONObject();
+        return keyManager.getPublicJwkSet().toJSONObject();
     }
 
     // 2. Endpoint to generate the Asymmetric RS256 Token
     @PostMapping("/login/asymmetric")
     public Map<String, String> generateAsymmetricToken(
             @RequestParam String username,
-            @RequestParam String tenantId) {
+            @RequestParam String tenantId,
+            @RequestParam String password) {
 
-    	/// ➕ Fetch permissions dynamically from your tables
-        List<String> permissionList = authorizationRepository.findPermissionsByUsernameAndTenant(username, tenantId);
-        List<String> roleList = authorizationRepository.findRolesByUsernameAndTenant(username, tenantId); 
+        verifyCredentials(username, tenantId, password);
+
+        List<String> permissionList =
+                authorizationRepository
+                        .findPermissionsByUsernameAndTenant(
+                                username, tenantId);
+
+        List<String> roleList =
+                authorizationRepository.findRolesByUsernameAndTenant(
+                        username, tenantId);
         
         // Build claims exactly like your symmetric layout
         JwtClaimsSet claimsSet = JwtClaimsSet.builder()
-                .issuer("http://localhost:8081") // Matches auth-service port
+                .issuer(issuer) // Matches auth-service port
                 .subject(username)
                 .claim("tenant_id", tenantId)
                 .claim("roles", roleList)          // Will contain ["ROLE_TENANT_ADMIN"] from db
@@ -132,12 +156,31 @@ public class MockAuthController {
                 .keyId(keyManager.getRsaKey().getKeyID())
                 .build();
 
-        NimbusJwtEncoder encoder = new NimbusJwtEncoder(new ImmutableJWKSet<>(keyManager.getJwkSet()));
-        String token = encoder.encode(JwtEncoderParameters.from(jwsHeader, claimsSet)).getTokenValue();
+     // Use the RSA key containing the private key for signing.
+        NimbusJwtEncoder encoder = new NimbusJwtEncoder(
+            new ImmutableJWKSet<>(
+                new com.nimbusds.jose.jwk.JWKSet(keyManager.getRsaKey())
+            )
+        );        String token = encoder.encode(JwtEncoderParameters.from(jwsHeader, claimsSet)).getTokenValue();
 
         Map<String, String> response = new HashMap<>();
         response.put("token_type", "Bearer");
         response.put("access_token", token);
         return response;
+    }
+    
+    private void verifyCredentials(
+            String username, String tenantId, String password) {
+
+        UserEntity user = authorizationRepository
+                .findByEmailIgnoreCaseAndTenantIdIgnoreCase(
+                        username, tenantId)
+                .orElseThrow(() ->
+                        new BadCredentialsException(
+                                "Invalid credentials"));
+
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid credentials");
+        }
     }
 }

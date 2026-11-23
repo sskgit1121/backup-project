@@ -28,5 +28,16 @@ public final class TenantContext {
         log.debug("Clearing tenant context");
         CURRENT_TENANT.remove();
     }
+    
+    public static String requireTenantId() {
+        String tenantId = getTenantId();
+
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalStateException(
+                    "No authenticated tenant context is available");
+        }
+
+        return tenantId;
+    }
 }
 

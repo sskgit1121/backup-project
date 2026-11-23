@@ -94,13 +94,19 @@ public class Inventory {
 
     @PrePersist
     public void autoAssignTenantContext() {
-        if (this.tenantId == null || this.tenantId.isBlank()) {
-            String currentTenant = TenantContext.getTenantId();
-            if (currentTenant == null || currentTenant.isBlank()) {
-                throw new IllegalStateException("Cannot create inventory without an active tenant context");
-            }
-            this.tenantId = currentTenant;
+        String currentTenant = TenantContext.requireTenantId();
+
+        // Reject a conflicting tenant supplied by the client.
+        if (tenantId != null
+                && !tenantId.isBlank()
+                && !tenantId.equals(currentTenant)) {
+            throw new IllegalStateException(
+                    "Cannot create inventory for another tenant");
         }
+
+        // The trusted security context is authoritative.
+        this.tenantId = currentTenant;
+
         validateQuantity();
     }
 

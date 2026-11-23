@@ -1,5 +1,6 @@
 package com.ssk.inventory.service;
 
+import com.ssk.context.TenantContext;
 import com.ssk.inventory.model.Inventory;
 import com.ssk.inventory.repository.InventoryRepository;
 import org.springframework.stereotype.Service;
@@ -14,27 +15,52 @@ public class InventoryService {
         this.inventoryRepository = inventoryRepository;
     }
 
-    @Transactional              //Keep transactional at service layer
-    public Inventory deductStock(String sku, Integer quantity) {
-        // The aspect automatically forces Hibernate to attach: WHERE tenant_id = :tenantId
-        Inventory inventory = inventoryRepository.findBySkuCode(sku)
-                .orElseThrow(() -> new RuntimeException("SKU " + sku + " not found or access denied"));
 
-        if (inventory.getQuantity() < quantity) {
-            throw new RuntimeException("Insufficient stock level for SKU: " + sku);
-        }
+@Transactional
+public Inventory deductStock(String sku, Integer quantity) {
+    String tenantId = TenantContext.requireTenantId();
 
-        inventory.setQuantity(inventory.getQuantity() - quantity);
-        return inventoryRepository.save(inventory);
+    Inventory inventory = inventoryRepository
+            .findBySkuCodeAndTenantId(sku, tenantId)
+            .orElseThrow(() ->
+                    new RuntimeException(
+                            "SKU not found or access denied"));
+
+    if (inventory.getQuantity() < quantity) {
+        throw new RuntimeException(
+                "Insufficient stock level for SKU: " + sku);
     }
 
-    @Transactional
-    public Inventory adjustStock(Inventory adjustmentPayload) {
-        // Clean implicit filtering ensures safe lookup without mixing parameters
-        Inventory existing = inventoryRepository.findBySkuCode(adjustmentPayload.getSkuCode())
-                .orElseThrow(() -> new RuntimeException("SKU not found or access denied"));
-        
-        existing.setQuantity(adjustmentPayload.getQuantity());
-        return inventoryRepository.save(existing);
+    inventory.setQuantity(
+            inventory.getQuantity() - quantity);
+
+    return inventoryRepository.save(inventory);
+}
+
+@Transactional
+public Inventory adjustStock(Inventory adjustmentPayload) {
+
+    // Get the tenant ID established from the authenticated request.
+    String tenantId = TenantContext.getTenantId();
+
+    // Reject requests without a valid tenant context.
+    if (tenantId == null || tenantId.isBlank()) {
+        throw new RuntimeException("Tenant context is missing");
     }
+
+    // Find the SKU only within the current tenant.
+    Inventory existing = inventoryRepository
+            .findBySkuCodeAndTenantId(
+                    adjustmentPayload.getSkuCode(),
+                    tenantId
+            )
+            .orElseThrow(() ->
+                    new RuntimeException("SKU not found or access denied"));
+
+    // Update the existing record's quantity.
+    existing.setQuantity(adjustmentPayload.getQuantity());
+
+    // Persist and return the updated inventory.
+    return inventoryRepository.save(existing);
+}
 }

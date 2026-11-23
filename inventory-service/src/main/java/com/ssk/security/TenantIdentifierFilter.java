@@ -1,5 +1,5 @@
 package com.ssk.security;
-// It intercepts the web request after Spring Security has already validated the OAuth2 Bearer Token
+
 import com.ssk.context.TenantContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -16,32 +16,45 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+@Component
 public class TenantIdentifierFilter extends OncePerRequestFilter {
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, 
-                                    HttpServletResponse response, 
-                                    FilterChain filterChain) 
-                                    throws ServletException, IOException {
-        try {
-            // 1. Get the current authentication object populated by BearerTokenAuthenticationFilter
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-            if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
-                // 2. Extract tenant_id claim from the validated mock JWT token
-                String tenantId = jwt.getClaimAsString("tenant_id");
-                
-                if (tenantId != null && !tenantId.isBlank()) {
-                    TenantContext.setTenantId(tenantId);
-                }
+@Override
+protected void doFilterInternal(
+        HttpServletRequest request,
+        HttpServletResponse response,
+        FilterChain filterChain)
+        throws ServletException, IOException {
+
+    try {
+        // Authentication should already be available after
+        // BearerTokenAuthenticationFilter.
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication != null
+                && authentication.getPrincipal() instanceof Jwt jwt) {
+
+            String tenantId = jwt.getClaimAsString("tenant_id");
+
+            if (tenantId == null || tenantId.isBlank()) {
+                response.sendError(
+                        HttpServletResponse.SC_FORBIDDEN,
+                        "Missing or invalid tenant claim"
+                );
+                return;
             }
 
-            // 3. Continue processing the request
-            filterChain.doFilter(request, response);
-            
-        } finally {
-            // 4. CRUCIAL: Always clear the thread local to prevent memory leaks in shared thread pools
-            TenantContext.clear();
+            TenantContext.setTenantId(tenantId);
         }
+
+        // Continue the request exactly once.
+        filterChain.doFilter(request, response);
+
+    } finally {
+        // Prevent tenant context from leaking between requests.
+        TenantContext.clear();
     }
+}
 }

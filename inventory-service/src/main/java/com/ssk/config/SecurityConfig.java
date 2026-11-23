@@ -28,11 +28,22 @@ import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthen
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTParser;
 import com.ssk.security.TenantIdentifierFilter;
-
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 
 @Configuration
 @EnableWebSecurity
@@ -48,8 +59,11 @@ public class SecurityConfig {
     @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
     private String jwkSetUri; 
     
+    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
+	private String issuer;
+    
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, TenantIdentifierFilter tenantFilter) throws Exception {
         http
             // 1. Disable CSRF for stateless REST microservices
             .csrf(csrf -> csrf.disable()) 
@@ -61,7 +75,7 @@ public class SecurityConfig {
             
             // 3. Define access paths
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/login/**", "/api/v1/erp/inventory/test-header" ,"/error").permitAll() // Keep auth endpoints open
+                .requestMatchers("/api/v1/auth/login/**","/error").permitAll() // Keep auth endpoints open
                 .anyRequest().authenticated()                                                                      // Secure everything else (like inventory)
             )
             
@@ -74,8 +88,8 @@ public class SecurityConfig {
             
             // 5. CRUCIAL: Hook up your tenant filter right after Spring validates the token signature
             .addFilterAfter(
-                new TenantIdentifierFilter(),
-                BearerTokenAuthenticationFilter.class
+                    tenantFilter,
+                    BearerTokenAuthenticationFilter.class
             );
 
         return http.build();
@@ -145,37 +159,46 @@ public class SecurityConfig {
             }
 
             // 3. Fallback to prevent access-denied errors if both lists are completely empty
-            if (authorities.isEmpty()) {
-                authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-            }
+//            if (authorities.isEmpty()) {
+//                authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+//            }
 
             return new JwtAuthenticationToken(jwt, authorities);
         };
     }
+    
     /**
      * Standard Symmetric JWT Decryption Logic
      */
     
     private JwtDecoder jwtDecoder() {
-    	byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
-        SecretKeySpec secretKeySpec = new SecretKeySpec(
-            secretKey.getBytes(StandardCharsets.UTF_8),
-            "HmacSHA256"
-        );
+        byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
 
-        return NimbusJwtDecoder
-            .withSecretKey(secretKeySpec)
-            .macAlgorithm(MacAlgorithm.HS256)
-            .build();
+        SecretKeySpec secretKeySpec =
+                new SecretKeySpec(keyBytes, "HmacSHA256");
+
+        NimbusJwtDecoder decoder = NimbusJwtDecoder
+                .withSecretKey(secretKeySpec)
+                .macAlgorithm(MacAlgorithm.HS256)
+                .build();
+
+        decoder.setJwtValidator(jwtValidators());
+
+        return decoder;
     }
    
     /**
      * Isolated Asymmetric OIDC Keycloak Realm Decoder
      */
     private JwtDecoder asymmetricJWTDecoder() {
-        return NimbusJwtDecoder.withJwkSetUri(jwkSetUri)
-        		.jwsAlgorithm(SignatureAlgorithm.RS256) 
-                .build();        
+        NimbusJwtDecoder decoder = NimbusJwtDecoder
+                .withJwkSetUri(jwkSetUri)
+                .jwsAlgorithm(SignatureAlgorithm.RS256)
+                .build();
+
+        decoder.setJwtValidator(jwtValidators());
+
+        return decoder;
     }
 
 
@@ -194,5 +217,60 @@ public class SecurityConfig {
             // Fallback cleanly to your symmetric default if the token is completely malformed
             return false;
         }
+    }
+    
+    
+    private OAuth2TokenValidator<Jwt> jwtValidators() {
+        return new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(issuer),
+                jwt -> {
+                    String tenantId = jwt.getClaimAsString("tenant_id");
+                    Object roles = jwt.getClaim("roles");
+                    Object permissions = jwt.getClaim("permissions");
+
+                    boolean validTenant =
+                            tenantId != null && !tenantId.isBlank();
+
+                    boolean validRoles =
+                            roles instanceof Collection<?> && !((Collection<?>) roles).isEmpty();
+
+                    boolean validPermissions =
+                            (permissions instanceof Collection<?>
+                                    && !((Collection<?>) permissions).isEmpty())
+                            || (permissions instanceof String
+                                    && !((String) permissions).isBlank());
+
+                    if (validTenant && validRoles && validPermissions) {
+                        return OAuth2TokenValidatorResult.success();
+                    }
+
+                    return OAuth2TokenValidatorResult.failure(
+                            new OAuth2Error(
+                                    "invalid_token",
+                                    "Required tenant or authorization claims are missing",
+                                    null
+                            )
+                    );
+                }
+        );
+    }
+    
+    @Bean
+    public TenantIdentifierFilter tenantIdentifierFilter() {
+        return new TenantIdentifierFilter();
+    }
+
+    @Bean
+    public FilterRegistrationBean<TenantIdentifierFilter>
+            tenantFilterServletRegistration(
+                    TenantIdentifierFilter tenantFilter) {
+
+        FilterRegistrationBean<TenantIdentifierFilter> registration =
+                new FilterRegistrationBean<>(tenantFilter);
+
+        // Register this filter through Spring Security only.
+        registration.setEnabled(false);
+
+        return registration;
     }
 }
